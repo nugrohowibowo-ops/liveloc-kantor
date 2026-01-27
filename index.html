@@ -1,93 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LiveLoc Kantor - Leaflet</title>
+    <title>LiveLoc Kantor - Final</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        body { padding: 0; margin: 0; }
-        html, body, #map { height: 100%; width: 100vw; }
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; }
+
+        /* Tombol Lokasi */
+        .btn-loc {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: #007bff; color: white; border: none;
+            padding: 12px 25px; border-radius: 50px; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
+        }
+
+        /* Label Ruangan (Transparan & Rapi) */
+        .label-ruang {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid #666; color: #000;
+            padding: 2px 5px; border-radius: 4px;
+            font-size: 11px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
         
-        /* Tombol simpel untuk cari lokasi */
-        .locate-btn {
-            position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%); z-index: 1000;
-            padding: 12px 24px; background: #28a745; color: white;
-            border: none; border-radius: 50px; font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer;
+        /* Info Akurasi (Pojok Kanan Atas) */
+        .info-box {
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 5px 10px; border-radius: 5px;
+            font-size: 12px; border: 1px solid #ccc;
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <button class="locate-btn" onclick="cariSaya()">📍 Posisi Saya</button>
+    <div class="info-box" id="info-gps">Menunggu GPS...</div>
+    <button class="btn-loc" onclick="lacakSaya()">📍 Posisi Saya</button>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
-        // --- KONFIGURASI ---
-        // Ganti dengan koordinat pojok kantor Anda agar denah pas di peta dunia
-        // Format: [Latitude, Longitude]
-        var corner1 = [-7.816349, 110.294446]; // Pojok Kiri Atas (NorthWest)
-        var corner2 = [-7.816756, 110.294826]; // Pojok Kanan Bawah (SouthEast)
-        var bounds = [corner1, corner2];
-
-        // --- INISIALISASI PETA ---
-        // Kita set tampilan awal ke tengah-tengah denah
-        var map = L.map('map').fitBounds(bounds);
-
-        // Opsi A: Pakai Peta Dasar OpenStreetMap (Gratis) kalau mau lihat jalan luar gedung
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 22, // Bisa zoom in sangat dekat
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // Opsi B: Tempel Denah Kantor Anda di atas peta
-        var imageUrl = 'denah.png'; // GANTI dengan file gambar Anda
+        // --- BAGIAN INI WAJIB DIEDIT DARI HASIL KALIBRASI ---
         
-        L.imageOverlay(imageUrl, bounds, {
-            opacity: 0.8, // Transparansi agar jalan di bawah masih agak terlihat
-            interactive: true
+        // Masukkan angka yang Anda dapat dari file 'kalibrasi.html' tadi di sini:
+        var pojokKiriAtas = [-7.816000, 110.293977]; // CONTOH: Ganti dengan angka Anda
+        var pojokKananBawah = [-7.816991, 110.295570]; // CONTOH: Ganti dengan angka Anda
+        
+        // -----------------------------------------------------
+
+        var bounds = [pojokKiriAtas, pojokKananBawah];
+        var map = L.map('map', {zoomControl: false}).fitBounds(bounds);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 22, attribution: '© OSM'
         }).addTo(map);
 
-        // Marker untuk User
-        var userMarker = L.marker([-0, 0], {opacity: 0}).addTo(map); // Awalnya sembunyi
-        var userCircle = L.circle([-0, 0], {radius: 10}).addTo(map);
+        // Overlay Denah
+        L.imageOverlay('denah.png', bounds, { opacity: 0.9 }).addTo(map);
 
-        // --- FUNGSI LACAK LOKASI ---
-        function cariSaya() {
-            if (!navigator.geolocation) {
-                alert("Browser tidak mendukung Geolocation");
-                return;
-            }
+        // --- DEFINISI RUANGAN (Edit Koordinat ini agar titiknya pas di kamar/ruang) ---
+        // Tips: Koordinat ruangan pasti berada DI ANTARA angka pojokKiriAtas dan pojokKananBawah
+        var ruangan = [
+            { nama: "Lobby", lat:  -7.816522 + 0.0001, lng: 110.294606 + 0.0001 },
+            { nama: "R.DIM", lat:  -7.816453 + 0.0002, lng: 110.294683 + 0.0002 },
+            { nama: "Toilet", lat:  -7.816453 + 0.0001, lng: 110.294763 + 0.0003 }
+	    { nama: "R. Security", lat:   -7.816390 + 0.0001, lng: 110.294523 + 0.0003 }
+        ];
 
-            // Meminta posisi realtime
-            navigator.geolocation.watchPosition(success, error, {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
-            });
-        }
+        // Loop untuk menampilkan label ruangan
+        ruangan.forEach(function(r) {
+            L.marker([r.lat, r.lng], { opacity: 0 }) // Marker transparan (hanya teks)
+             .bindTooltip(r.nama, { permanent: true, direction: "center", className: "label-ruang" })
+             .addTo(map);
+        });
 
-        function success(pos) {
-            var lat = pos.coords.latitude;
-            var lng = pos.coords.longitude;
-            var accuracy = pos.coords.accuracy;
+        // Setup Marker User
+        var userMarker = L.circleMarker([0,0], { radius: 6, color: 'white', fillColor: 'blue', fillOpacity: 1 }).addTo(map);
+        var accuracyCircle = L.circle([0,0], { radius: 1 }).addTo(map);
+        var gpsActive = false;
 
-            // Update posisi marker & lingkaran akurasi
-            userMarker.setLatLng([lat, lng]).setOpacity(1);
-            userCircle.setLatLng([lat, lng]).setRadius(accuracy);
+        function lacakSaya() {
+            if (!navigator.geolocation) return alert("Browser tidak support GPS");
+            
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    var lat = pos.coords.latitude;
+                    var lng = pos.coords.longitude;
+                    var acc = pos.coords.accuracy;
 
-            // Fokus peta ke user
-            map.flyTo([lat, lng], 20); // Zoom level 20 (sangat dekat)
-        }
+                    // Update UI
+                    userMarker.setLatLng([lat, lng]);
+                    accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
+                    document.getElementById('info-gps').innerHTML = "Akurasi: " + Math.round(acc) + " m";
 
-        function error(err) {
-            console.warn(`ERROR(${err.code}): ${err.message}`);
-            alert("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.");
+                    // Zoom otomatis hanya di awal
+                    if (!gpsActive) {
+                        map.setView([lat, lng], 20);
+                        gpsActive = true;
+                    }
+                },
+                (err) => { alert("Gagal mengambil lokasi: " + err.message); },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+            );
         }
     </script>
 </body>
