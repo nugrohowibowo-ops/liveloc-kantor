@@ -1,14 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LiveLoc Kantor - Final Fix</title>
+    <title>LiveLoc Kantor - Zoom Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; }
 
-        /* Tombol Lokasi */
+        /* --- 1. GAYA TOMBOL ZOOM --- */
+        .zoom-controls {
+            position: absolute; bottom: 100px; right: 20px;
+            z-index: 1000; display: flex; flex-direction: column; gap: 10px;
+        }
+        .zoom-btn {
+            width: 50px; height: 50px;
+            background: white; border: none; border-radius: 50%;
+            font-size: 24px; font-weight: bold; color: #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .zoom-btn:active { background: #f0f0f0; }
+
+        /* Tombol Posisi Saya */
         .btn-loc {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: #007bff; color: white; border: none;
@@ -18,8 +32,8 @@
 
         /* Label Ruangan */
         .label-ruang {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid #333; color: #000;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid #666; color: #000;
             padding: 2px 5px; border-radius: 4px;
             font-size: 11px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
         }
@@ -35,47 +49,48 @@
 <body>
 
     <div id="map"></div>
+    
     <div class="info-box" id="info-gps">Menunggu GPS...</div>
+
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="map.zoomIn()">+</button>
+        <button class="zoom-btn" onclick="map.zoomOut()">−</button>
+    </div>
+
     <button class="btn-loc" onclick="lacakSaya()">📍 Posisi Saya</button>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- 1. SETTING DENAH (GEOREFERENCING) ---
-        // Jika gambar denah kurang ke KIRI/KANAN, ubah angka belakang (Longitude)
-        // Jika gambar denah kurang ke ATAS/BAWAH, ubah angka depan (Latitude)
-        
-        // Coba mainkan angka desimal paling belakang sedikit demi sedikit sampai pas
+        // --- PENGATURAN KOORDINAT (Gunakan angka terakhir yang paling pas) ---
         var pojokKiriAtas = [-7.816000, 110.293977]; 
         var pojokKananBawah = [-7.816991, 110.295570]; 
         
         var bounds = [pojokKiriAtas, pojokKananBawah];
+        
+        // Matikan zoomControl default agar kita bisa pakai tombol custom kita sendiri
         var map = L.map('map', {zoomControl: false}).fitBounds(bounds);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 22, attribution: '© OSM'
         }).addTo(map);
 
-        // Overlay Denah
         L.imageOverlay('denah.png', bounds, { opacity: 0.8 }).addTo(map);
 
-        // --- 2. DAFTAR RUANGAN ---
-        // Koordinat ini saya rapikan (hapus +0.0001) agar lebih mudah dibaca.
-        // Ganti angka di bawah ini dengan menyentuh peta nanti (pakai console log) jika belum pas.
+        // --- DATA RUANGAN ---
         var ruangan = [
             { nama: "Lobby",       lat: -7.816422, lng: 110.294706 },
             { nama: "R.DIM",       lat: -7.816253, lng: 110.294883 },
-            { nama: "Toilet",      lat: -7.816353, lng: 110.295063 }, // <--- Tadi error disini (kurang koma)
+            { nama: "Toilet",      lat: -7.816353, lng: 110.295063 }, 
             { nama: "R. Security", lat: -7.816290, lng: 110.294823 }
         ];
 
-        // Loop menampilkan label
         ruangan.forEach(function(r) {
             L.marker([r.lat, r.lng], { opacity: 0 }) 
              .bindTooltip(r.nama, { permanent: true, direction: "center", className: "label-ruang" })
              .addTo(map);
         });
 
-        // --- 3. LOGIKA LOKASI USER ---
+        // --- SETUP GPS USER ---
         var userMarker = L.circleMarker([0,0], { radius: 8, color: 'white', fillColor: 'blue', fillOpacity: 1 }).addTo(map);
         var accuracyCircle = L.circle([0,0], { radius: 1 }).addTo(map);
         var gpsActive = false;
@@ -93,12 +108,13 @@
                     accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
                     document.getElementById('info-gps').innerHTML = "Akurasi: " + Math.round(acc) + " m";
 
+                    // Hanya zoom otomatis saat pertama kali tombol ditekan
                     if (!gpsActive) {
                         map.setView([lat, lng], 20);
                         gpsActive = true;
                     }
                 },
-                (err) => { alert("Gagal mengambil lokasi: " + err.message); },
+                (err) => { alert("Pastikan GPS aktif: " + err.message); },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
             );
         }
