@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LiveLoc Kantor - Final</title>
+    <title>LiveLoc Kantor - Final Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -16,15 +16,15 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
         }
 
-        /* Label Ruangan (Transparan & Rapi) */
+        /* Label Ruangan */
         .label-ruang {
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid #666; color: #000;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #333; color: #000;
             padding: 2px 5px; border-radius: 4px;
             font-size: 11px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
         }
         
-        /* Info Akurasi (Pojok Kanan Atas) */
+        /* Info Akurasi */
         .info-box {
             position: absolute; top: 10px; right: 10px; z-index: 1000;
             background: white; padding: 5px 10px; border-radius: 5px;
@@ -40,14 +40,14 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- BAGIAN INI WAJIB DIEDIT DARI HASIL KALIBRASI ---
+        // --- 1. SETTING DENAH (GEOREFERENCING) ---
+        // Jika gambar denah kurang ke KIRI/KANAN, ubah angka belakang (Longitude)
+        // Jika gambar denah kurang ke ATAS/BAWAH, ubah angka depan (Latitude)
         
-        // Masukkan angka yang Anda dapat dari file 'kalibrasi.html' tadi di sini:
-        var pojokKiriAtas = [-7.816000, 110.293977]; // CONTOH: Ganti dengan angka Anda
-        var pojokKananBawah = [-7.816991, 110.295570]; // CONTOH: Ganti dengan angka Anda
+        // Coba mainkan angka desimal paling belakang sedikit demi sedikit sampai pas
+        var pojokKiriAtas = [-7.816000, 110.293977]; 
+        var pojokKananBawah = [-7.816991, 110.295570]; 
         
-        // -----------------------------------------------------
-
         var bounds = [pojokKiriAtas, pojokKananBawah];
         var map = L.map('map', {zoomControl: false}).fitBounds(bounds);
 
@@ -56,26 +56,27 @@
         }).addTo(map);
 
         // Overlay Denah
-        L.imageOverlay('denah.png', bounds, { opacity: 0.9 }).addTo(map);
+        L.imageOverlay('denah.png', bounds, { opacity: 0.8 }).addTo(map);
 
-        // --- DEFINISI RUANGAN (Edit Koordinat ini agar titiknya pas di kamar/ruang) ---
-        // Tips: Koordinat ruangan pasti berada DI ANTARA angka pojokKiriAtas dan pojokKananBawah
+        // --- 2. DAFTAR RUANGAN ---
+        // Koordinat ini saya rapikan (hapus +0.0001) agar lebih mudah dibaca.
+        // Ganti angka di bawah ini dengan menyentuh peta nanti (pakai console log) jika belum pas.
         var ruangan = [
-            { nama: "Lobby", lat:  -7.816522 + 0.0001, lng: 110.294606 + 0.0001 },
-            { nama: "R.DIM", lat:  -7.816453 + 0.0002, lng: 110.294683 + 0.0002 },
-            { nama: "Toilet", lat:  -7.816453 + 0.0001, lng: 110.294763 + 0.0003 }
-	    { nama: "R. Security", lat:   -7.816390 + 0.0001, lng: 110.294523 + 0.0003 }
+            { nama: "Lobby",       lat: -7.816422, lng: 110.294706 },
+            { nama: "R.DIM",       lat: -7.816253, lng: 110.294883 },
+            { nama: "Toilet",      lat: -7.816353, lng: 110.295063 }, // <--- Tadi error disini (kurang koma)
+            { nama: "R. Security", lat: -7.816290, lng: 110.294823 }
         ];
 
-        // Loop untuk menampilkan label ruangan
+        // Loop menampilkan label
         ruangan.forEach(function(r) {
-            L.marker([r.lat, r.lng], { opacity: 0 }) // Marker transparan (hanya teks)
+            L.marker([r.lat, r.lng], { opacity: 0 }) 
              .bindTooltip(r.nama, { permanent: true, direction: "center", className: "label-ruang" })
              .addTo(map);
         });
 
-        // Setup Marker User
-        var userMarker = L.circleMarker([0,0], { radius: 6, color: 'white', fillColor: 'blue', fillOpacity: 1 }).addTo(map);
+        // --- 3. LOGIKA LOKASI USER ---
+        var userMarker = L.circleMarker([0,0], { radius: 8, color: 'white', fillColor: 'blue', fillOpacity: 1 }).addTo(map);
         var accuracyCircle = L.circle([0,0], { radius: 1 }).addTo(map);
         var gpsActive = false;
 
@@ -88,12 +89,10 @@
                     var lng = pos.coords.longitude;
                     var acc = pos.coords.accuracy;
 
-                    // Update UI
                     userMarker.setLatLng([lat, lng]);
                     accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
                     document.getElementById('info-gps').innerHTML = "Akurasi: " + Math.round(acc) + " m";
 
-                    // Zoom otomatis hanya di awal
                     if (!gpsActive) {
                         map.setView([lat, lng], 20);
                         gpsActive = true;
