@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LiveLoc Kantor - Zoom Edition</title>
+    <title>LiveLoc Kantor - Info Lengkap</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; }
 
-        /* --- 1. GAYA TOMBOL ZOOM --- */
+        /* Zoom Control */
         .zoom-controls {
             position: absolute; bottom: 100px; right: 20px;
             z-index: 1000; display: flex; flex-direction: column; gap: 10px;
@@ -22,34 +22,36 @@
         }
         .zoom-btn:active { background: #f0f0f0; }
 
-        /* Tombol Posisi Saya */
+        /* Tombol Lokasi */
         .btn-loc {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: #007bff; color: white; border: none;
             padding: 12px 25px; border-radius: 50px; font-weight: bold;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
         }
-
-        /* Label Ruangan */
-        .label-ruang {
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid #666; color: #000;
-            padding: 2px 5px; border-radius: 4px;
-            font-size: 11px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-        }
         
         /* Info Akurasi */
         .info-box {
             position: absolute; top: 10px; right: 10px; z-index: 1000;
-            background: white; padding: 5px 10px; border-radius: 5px;
-            font-size: 12px; border: 1px solid #ccc;
+            background: white; padding: 8px 15px; border-radius: 8px;
+            font-size: 13px; border: 1px solid #ccc; font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* Label Ruangan */
+        .label-ruang {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #333; color: #000;
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 11px; font-weight: bold; 
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer; /* Menunjukkan bisa diklik */
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    
     <div class="info-box" id="info-gps">Menunggu GPS...</div>
 
     <div class="zoom-controls">
@@ -61,56 +63,105 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- PENGATURAN KOORDINAT (Gunakan angka terakhir yang paling pas) ---
-        var pojokKiriAtas = [-7.815692, 110.294074]; 
-        var pojokKananBawah = [-7.817379, 110.295466]; 
-        
+        // --- 1. SETUP PETA ---
+        var pojokKiriAtas = [-7.815907, 110.293634]; 
+        var pojokKananBawah = [-7.817137, 110.295956]; 
         var bounds = [pojokKiriAtas, pojokKananBawah];
         
-        // Matikan zoomControl default agar kita bisa pakai tombol custom kita sendiri
         var map = L.map('map', {zoomControl: false}).fitBounds(bounds);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 22, attribution: '© OSM'
+        L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 21, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
         }).addTo(map);
 
         L.imageOverlay('denah.png', bounds, { opacity: 0.8 }).addTo(map);
 
-        // --- DATA RUANGAN ---
+        // --- 2. DATA RUANGAN (DENGAN INFO & FOTO) ---
+        // Cara Pakai:
+        // foto: 'nama_file_foto.jpg' (Harus diupload ke GitHub dulu)
+        // info: Tulisan keterangan (bisa pakai <br> untuk baris baru)
+        
         var ruangan = [
-            { nama: "",       lat: , lng:  },
-      
+            { 
+                nama: "R. Security", 
+                lat: -7.816434, 
+                lng: 110.294528,
+                foto: "security.png", // Ganti dengan nama file foto Anda nanti
+                info: "Pos Penjagaan 24 Jam.<br>Lapor tamu disini."
+            },
+            { 
+                nama: "Taman Alat", 
+                lat: -7.816597, 
+                lng: 110.294872,
+                foto: "https://via.placeholder.com/300x200?text=Foto+Taman", // Ganti dengan nama file foto Anda nanti
+                info: "Area penyimpanan alat berat.<br><b>Dilarang Masuk Tanpa Izin.</b>"
+            },
+            // Contoh Tambahan:
+            {
+                nama: "Lobby-Pelayanan",
+                lat: -7.816554, // Sesuaikan koordinat
+                lng: 110.294640, // Sesuaikan koordinat
+                foto: "https://via.placeholder.com/300x200?text=Ruang+Rapat",
+                info: "Ruang Tunggu Tamu dan Loket Pelayanan MKG"
+            }
         ];
 
+        // Loop Membuat Marker & Popup
         ruangan.forEach(function(r) {
-            L.marker([r.lat, r.lng], { opacity: 0 }) 
-             .bindTooltip(r.nama, { permanent: true, direction: "center", className: "label-ruang" })
-             .addTo(map);
+            // Marker transparan sebagai pemicu klik
+            var marker = L.marker([r.lat, r.lng], { opacity: 0 }).addTo(map);
+            
+            // Tampilkan Label
+            marker.bindTooltip(r.nama, { permanent: true, direction: "center", className: "label-ruang", interactive: true });
+
+            // Siapkan Isi Popup (HTML)
+            var isiPopup = "<div style='text-align:center; width:200px;'>";
+            
+            // Jika ada foto, tampilkan
+            if (r.foto) {
+                isiPopup += "<img src='" + r.foto + "' style='width:100%; border-radius:5px; margin-bottom:5px;'>";
+            }
+            
+            isiPopup += "<h3 style='margin:5px 0; color:#007bff;'>" + r.nama + "</h3>";
+            
+            // Jika ada info, tampilkan
+            if (r.info) {
+                isiPopup += "<p style='margin:0; font-size:13px; color:#333;'>" + r.info + "</p>";
+            }
+            
+            isiPopup += "</div>";
+
+            // Pasang Popup ke Marker
+            marker.bindPopup(isiPopup);
         });
 
-        // --- SETUP GPS USER ---
-        var userMarker = L.circleMarker([0,0], { radius: 8, color: 'white', fillColor: 'blue', fillOpacity: 1 }).addTo(map);
-        var accuracyCircle = L.circle([0,0], { radius: 1 }).addTo(map);
+        // --- 3. GPS SETUP ---
+        var userMarker = L.circleMarker([0,0], { radius: 8, color: 'white', fillColor: '#007bff', fillOpacity: 1 }).addTo(map);
+        var accuracyCircle = L.circle([0,0], { radius: 1, color: '#007bff', weight: 1, fillOpacity: 0.2 }).addTo(map);
         var gpsActive = false;
 
         function lacakSaya() {
             if (!navigator.geolocation) return alert("Browser tidak support GPS");
-            
             navigator.geolocation.watchPosition(
                 (pos) => {
                     var lat = pos.coords.latitude;
                     var lng = pos.coords.longitude;
                     var acc = pos.coords.accuracy;
-
                     userMarker.setLatLng([lat, lng]);
                     accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
-                    document.getElementById('info-gps').innerHTML = "Akurasi: " + Math.round(acc) + " m";
-
-                    // Hanya zoom otomatis saat pertama kali tombol ditekan
-                    if (!gpsActive) {
-                        map.setView([lat, lng], 20);
-                        gpsActive = true;
+                    
+                    var textInfo = document.getElementById('info-gps');
+                    textInfo.innerHTML = "Akurasi: " + Math.round(acc) + " m";
+                    
+                    if(acc <= 10) {
+                        textInfo.style.color = "green"; textInfo.innerHTML += " (Bagus)";
+                    } else if (acc > 20) {
+                        textInfo.style.color = "red"; textInfo.innerHTML += " (Lemah)";
+                    } else {
+                        textInfo.style.color = "orange";
                     }
+
+                    if (!gpsActive) { map.setView([lat, lng], 20); gpsActive = true; }
                 },
                 (err) => { alert("Pastikan GPS aktif: " + err.message); },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
